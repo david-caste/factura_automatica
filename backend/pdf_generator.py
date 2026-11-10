@@ -29,16 +29,54 @@ def crear_pdf(
     pdf = canvas.Canvas(str(ruta), pagesize=letter)
     pdf.setTitle(f"Factura {numero}")
 
-    pdf.setFillColorRGB(0.12, 0.17, 0.21)
-    pdf.setFont("Helvetica-Bold", 18)
-    pdf.drawCentredString(pagina_ancho / 2, pagina_alto - 58, "FACTURA")
-    pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawString(margen, pagina_alto - 82, f"Número de factura: {numero}")
-    pdf.setFont("Helvetica", 10)
+    color_primario = (0.10, 0.18, 0.29)
+    color_acento = (0.08, 0.58, 0.55)
+    color_texto = (0.16, 0.22, 0.29)
+    color_secundario = (0.38, 0.45, 0.53)
+    color_borde = (0.83, 0.87, 0.90)
+    color_fondo = (0.95, 0.97, 0.98)
+
+    encabezado_y = pagina_alto - margen - 82
+    pdf.setFillColorRGB(*color_primario)
+    pdf.roundRect(
+        margen,
+        encabezado_y,
+        contenido_ancho,
+        82,
+        8,
+        stroke=0,
+        fill=1,
+    )
+    pdf.setFillColorRGB(*color_acento)
+    pdf.roundRect(
+        margen,
+        encabezado_y,
+        7,
+        82,
+        3,
+        stroke=0,
+        fill=1,
+    )
+    pdf.setFillColorRGB(1, 1, 1)
+    pdf.setFont("Helvetica-Bold", 22)
+    pdf.drawString(margen + 22, encabezado_y + 47, "FACTURA")
+    pdf.setFillColorRGB(0.80, 0.87, 0.91)
+    pdf.setFont("Helvetica", 9)
+    pdf.drawString(margen + 23, encabezado_y + 29, "COMPROBANTE DE VENTA")
+
+    pdf.setFillColorRGB(1, 1, 1)
+    pdf.setFont("Helvetica-Bold", 10)
     pdf.drawRightString(
-        pagina_ancho - margen,
-        pagina_alto - 82,
-        f"Fecha: {date.today():%d/%m/%Y}",
+        pagina_ancho - margen - 18,
+        encabezado_y + 51,
+        f"N.º {numero}",
+    )
+    pdf.setFillColorRGB(0.80, 0.87, 0.91)
+    pdf.setFont("Helvetica", 9)
+    pdf.drawRightString(
+        pagina_ancho - margen - 18,
+        encabezado_y + 31,
+        f"FECHA  {date.today():%d/%m/%Y}",
     )
 
     columna_ancho = contenido_ancho / 2
@@ -86,28 +124,73 @@ def crear_pdf(
         )
 
     alto_cliente = alto_encabezado + sum(fila[2] for fila in filas)
-    cliente_y = pagina_alto - 100 - alto_cliente
+    cliente_y = encabezado_y - 14 - alto_cliente
+    cliente_top = cliente_y + alto_cliente
+    cabecera_cliente_y = cliente_top - alto_encabezado
 
-    pdf.setStrokeColorRGB(0.25, 0.31, 0.36)
-    pdf.setFillColorRGB(0.12, 0.17, 0.21)
-    pdf.rect(margen, cliente_y, contenido_ancho, alto_cliente, stroke=1, fill=0)
-    pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawCentredString(pagina_ancho / 2, cliente_y + alto_cliente - 19, "DATOS DEL CLIENTE")
+    pdf.setFillColorRGB(*color_fondo)
+    pdf.roundRect(
+        margen,
+        cliente_y,
+        contenido_ancho,
+        alto_cliente,
+        7,
+        stroke=0,
+        fill=1,
+    )
+    pdf.setFillColorRGB(*color_primario)
+    pdf.roundRect(
+        margen,
+        cabecera_cliente_y,
+        contenido_ancho,
+        alto_encabezado,
+        7,
+        stroke=0,
+        fill=1,
+    )
+    pdf.rect(
+        margen,
+        cabecera_cliente_y,
+        contenido_ancho,
+        alto_encabezado / 2,
+        stroke=0,
+        fill=1,
+    )
+    pdf.setStrokeColorRGB(*color_borde)
+    pdf.roundRect(
+        margen,
+        cliente_y,
+        contenido_ancho,
+        alto_cliente,
+        7,
+        stroke=1,
+        fill=0,
+    )
+    pdf.setFillColorRGB(*color_acento)
+    pdf.circle(margen + 14, cabecera_cliente_y + alto_encabezado / 2, 3, stroke=0, fill=1)
+    pdf.setFillColorRGB(1, 1, 1)
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(margen + 25, cabecera_cliente_y + 9, "DATOS DEL CLIENTE")
     pdf.line(
         margen,
-        cliente_y + alto_cliente - alto_encabezado,
+        cabecera_cliente_y,
         margen + contenido_ancho,
-        cliente_y + alto_cliente - alto_encabezado,
+        cabecera_cliente_y,
     )
-    pdf.line(
-        margen + columna_ancho,
-        cliente_y,
-        margen + columna_ancho,
-        cliente_y + alto_cliente - alto_encabezado,
-    )
-
-    cursor_y = cliente_y + alto_cliente - alto_encabezado
+    pdf.setStrokeColorRGB(*color_borde)
+    cursor_y = cabecera_cliente_y
     for indice, (izquierda, derecha, alto_fila) in enumerate(filas):
+        fila_abajo = cursor_y - alto_fila
+        if indice % 2 == 0:
+            pdf.setFillColorRGB(1, 1, 1)
+            pdf.rect(
+                margen + 1,
+                fila_abajo,
+                contenido_ancho - 2,
+                alto_fila,
+                stroke=0,
+                fill=1,
+            )
         for columna, (etiqueta, lineas, ancho_etiqueta) in enumerate(
             (
                 (*izquierda, ancho_etiqueta_izquierda),
@@ -117,8 +200,10 @@ def crear_pdf(
             columna_x = margen + columna * columna_ancho
             bloque_alto = len(lineas) * alto_linea
             texto_y = cursor_y - (alto_fila - bloque_alto) / 2 - 9
-            pdf.setFont("Helvetica-Bold", 9)
+            pdf.setFillColorRGB(*color_secundario)
+            pdf.setFont("Helvetica-Bold", 8)
             pdf.drawString(columna_x + 8, texto_y, f"{etiqueta}:")
+            pdf.setFillColorRGB(*color_texto)
             pdf.setFont("Helvetica", 10)
             for linea_indice, linea in enumerate(lineas):
                 pdf.drawString(
@@ -128,6 +213,7 @@ def crear_pdf(
                 )
         cursor_y -= alto_fila
         if indice < len(filas) - 1:
+            pdf.setStrokeColorRGB(*color_borde)
             pdf.line(margen, cursor_y, margen + columna_ancho, cursor_y)
             pdf.line(
                 margen + columna_ancho,
@@ -136,9 +222,16 @@ def crear_pdf(
                 cursor_y,
             )
 
-    alto_pago = 74
-    pago_y = cliente_y - 18 - alto_pago
-    pdf.rect(margen, pago_y, contenido_ancho, alto_pago, stroke=1, fill=0)
+    pdf.setStrokeColorRGB(*color_borde)
+    pdf.line(
+        margen + columna_ancho,
+        cliente_y,
+        margen + columna_ancho,
+        cabecera_cliente_y,
+    )
+
+    alto_pago = 82
+    pago_y = cliente_y - 16 - alto_pago
     anchos_columnas = [
         contenido_ancho * 0.34,
         contenido_ancho * 0.16,
@@ -157,16 +250,68 @@ def crear_pdf(
         f"$ {valor_unitario:,.2f}",
         f"$ {total:,.2f}",
     ]
+    pdf.setFillColorRGB(*color_fondo)
+    pdf.roundRect(
+        margen,
+        pago_y,
+        contenido_ancho,
+        alto_pago,
+        7,
+        stroke=0,
+        fill=1,
+    )
+    monto_x = margen + sum(anchos_columnas[:-1])
+    pdf.setFillColorRGB(*color_primario)
+    pdf.roundRect(
+        monto_x,
+        pago_y,
+        anchos_columnas[-1],
+        alto_pago,
+        7,
+        stroke=0,
+        fill=1,
+    )
+    pdf.rect(
+        monto_x,
+        pago_y,
+        8,
+        alto_pago,
+        stroke=0,
+        fill=1,
+    )
+    pdf.setStrokeColorRGB(*color_borde)
+    pdf.roundRect(
+        margen,
+        pago_y,
+        contenido_ancho,
+        alto_pago,
+        7,
+        stroke=1,
+        fill=0,
+    )
     x = margen
     for indice, (ancho, etiqueta, valor) in enumerate(
         zip(anchos_columnas, etiquetas_pago, valores_pago)
     ):
         if indice:
-            pdf.line(x, pago_y, x, pago_y + alto_pago)
-        pdf.setFont("Helvetica-Bold", 8)
-        pdf.drawString(x + 8, pago_y + 48, etiqueta)
-        pdf.setFont("Helvetica", 10)
-        pdf.drawString(x + 8, pago_y + 24, valor)
+            pdf.setStrokeColorRGB(
+                *(color_acento if indice == len(anchos_columnas) - 1 else color_borde)
+            )
+            pdf.line(x, pago_y + 10, x, pago_y + alto_pago - 10)
+        if indice == len(anchos_columnas) - 1:
+            pdf.setFillColorRGB(0.80, 0.87, 0.91)
+            pdf.setFont("Helvetica-Bold", 8)
+            pdf.drawString(x + 12, pago_y + 55, etiqueta)
+            pdf.setFillColorRGB(1, 1, 1)
+            pdf.setFont("Helvetica-Bold", 13)
+            pdf.drawString(x + 12, pago_y + 29, valor)
+        else:
+            pdf.setFillColorRGB(*color_secundario)
+            pdf.setFont("Helvetica-Bold", 8)
+            pdf.drawString(x + 10, pago_y + 54, etiqueta)
+            pdf.setFillColorRGB(*color_texto)
+            pdf.setFont("Helvetica-Bold", 10)
+            pdf.drawString(x + 10, pago_y + 30, valor)
         x += ancho
 
     pdf.save()
